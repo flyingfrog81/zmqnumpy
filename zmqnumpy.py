@@ -81,7 +81,7 @@ def msg_to_array(msg):
     [_dtype, _shape, _bin_msg] = msg_to_info(msg)
     return numpy.fromstring(_bin_msg, dtype=_dtype).reshape(tuple(_shape))
 
-def numpy_array_sender(name, endpoint, socket_type=zmq.PUSH):
+def numpy_array_sender(name, endpoint, sender_id="", socket_type=zmq.PUSH):
     """
     Decorator Factory
     The decorated function will have to return a numpy array, while the
@@ -108,13 +108,18 @@ def numpy_array_sender(name, endpoint, socket_type=zmq.PUSH):
     @param name: the label of the data stream
     @type endpoint: string
     @param endpoint: a zmq endpoint made as \"protocol://host:port\"
+    @param sender_id: sender identifier, if not given a uuid will be generated
+    automatically
     @param socket_type: a zmq socket type such as zmq.PUSH or zmq.PUB
 
     """
     _context = zmq.Context.instance()
     _socket = _context.socket(socket_type)
     _socket.connect(endpoint)
-    _uuid = uuid.uuid4().bytes
+    if not sender_id:
+        _uuid = uuid.uuid4().bytes
+    else:
+        _uuid = sender_id
     def wrapper(fn):
         @functools.wraps(fn)
         def wrapped(*args, **kwargs):
