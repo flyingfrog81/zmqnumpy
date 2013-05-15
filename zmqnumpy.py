@@ -67,8 +67,8 @@ def array_to_msg(nparray):
     return [nparray.dtype.name, _shape, nparray.tostring()]
 
 def msg_to_info(msg):
-    _shape = numpy.fromstring(msg[1], dtype=numpy.int32)
-    return [msg[0], _shape, msg[2]]
+    msg[3] = numpy.fromstring(msg[3], dtype=numpy.int32)
+    return msg
 
 def msg_to_array(msg):
     """
@@ -78,7 +78,7 @@ def msg_to_array(msg):
     @rtype: numpy.ndarray
     @return: The numpy array contained in the message
     """
-    [_dtype, _shape, _bin_msg] = msg_to_info(msg)
+    [_owner, _data_name, _dtype, _shape, _bin_msg] = msg_to_info(msg)
     return numpy.fromstring(_bin_msg, dtype=_dtype).reshape(tuple(_shape))
 
 def numpy_array_sender(name, endpoint, sender_id="", socket_type=zmq.PUSH):
