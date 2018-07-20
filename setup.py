@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(name='zmqnumpy',
-      version='0.1',
+      version='0.2',
       author="Marco Bartolini",
       author_email = "marco.bartolini@gmail.com",
       url = "https://github.com/flyingfrog81/zmqnumpy/",
@@ -39,6 +39,6 @@ an efficient interchange of data between processes and nodes.
 
 @author: Marco Bartolini
 @contact: marco.bartolini@gmail.com
-@version: 0.1
+@version: 0.2
       """,
      )

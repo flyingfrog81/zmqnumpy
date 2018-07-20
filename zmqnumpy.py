@@ -26,14 +26,14 @@
 This module implements a series of functions used to exchange
 numpy ndarrays between U{zeromq<http://www.zeromq.org>} sockets.
 Serializtion of numpy arrays happens using the numpy.ndarray.tostring method
-which preserves portability to standard C binary format, 
+which preserves portability to standard C binary format,
 enabling data exchange with different programming languages.
 A very simple protocol is defined in order to exchange array data, the
 multipart messages will be composed of:
 
   1. identifier string name
   2. the numpy array element type (dtype) in its string representation
-  3. numpy array shape encoded as a binary numpy.int32 array 
+  3. numpy array shape encoded as a binary numpy.int32 array
   4. the array data encoded as string using numpy.ndarray.tostring()
 
 This protocol guarantees that numpy array can be carried around and
@@ -63,14 +63,25 @@ def array_to_msg(nparray):
     @rtype: list
     @return: [dtype, shape, array]
     """
-    _shape = numpy.array(nparray.shape, dtype=numpy.int32).tostring()
-    return [nparray.dtype.name, _shape, nparray.tostring()]
-
-def msg_to_info(msg):
-    msg[3] = numpy.fromstring(msg[3], dtype=numpy.int32)
-    return msg
+    _shape = numpy.array(nparray.shape, dtype=numpy.int32)
+    return [nparray.dtype.name.encode(),
+            _shape.tostring(),
+            nparray.tostring()]
 
 def msg_to_array(msg):
+    """
+    reverse the array_to_message function in order to recover the proper
+    serialization of the array.
+    @param msg: the array representation in a list as serizlized by
+                array_to_msg
+    @return: the numpy array
+    """
+    _dtype_name = msg[0].decode()
+    _shape = numpy.fromstring(msg[1], numpy.int32)
+    _array = numpy.fromstring(msg[2], _dtype_name)
+    return (_dtype_name, _shape, _array.reshape(tuple(_shape)))
+
+def sender_msg_to_array(msg):
     """
     Parse a list argument as returned by L{array_to_msg} function of this
     module, and returns the numpy array contained in the message body.
@@ -78,8 +89,10 @@ def msg_to_array(msg):
     @rtype: numpy.ndarray
     @return: The numpy array contained in the message
     """
-    [_owner, _data_name, _dtype, _shape, _bin_msg] = msg_to_info(msg)
-    return numpy.fromstring(_bin_msg, dtype=_dtype).reshape(tuple(_shape))
+    [_dtype, _shape, _bin_msg] = msg_to_array(msg[2:])
+    _uuid = uuid.UUID(bytes=msg[0])
+    _data_name = msg[1].decode()
+    return (_uuid, _data_name, _dtype, _shape, _bin_msg)
 
 def numpy_array_sender(name, endpoint, sender_id="", socket_type=zmq.PUSH):
     """
@@ -111,7 +124,6 @@ def numpy_array_sender(name, endpoint, sender_id="", socket_type=zmq.PUSH):
     @param sender_id: sender identifier, if not given a uuid will be generated
     automatically
     @param socket_type: a zmq socket type such as zmq.PUSH or zmq.PUB
-
     """
     _context = zmq.Context.instance()
     _socket = _context.socket(socket_type)
@@ -124,7 +136,6 @@ def numpy_array_sender(name, endpoint, sender_id="", socket_type=zmq.PUSH):
         @functools.wraps(fn)
         def wrapped(*args, **kwargs):
             _data = fn(*args, **kwargs)
-            _socket.send_multipart([_uuid, name] + array_to_msg(_data))
+            _socket.send_multipart([_uuid, name.encode()] + array_to_msg(_data))
         return wrapped
     return wrapper
-
